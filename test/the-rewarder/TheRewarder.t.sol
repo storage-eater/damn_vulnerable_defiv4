@@ -148,7 +148,40 @@ contract TheRewarderChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_theRewarder() public checkSolvedByPlayer {
-        
+        uint256 playerAmountDVT = 11524763827831882;
+        uint256 playerAmountETH = 1171088749244340;
+        bytes32[] memory dvtLeaves = _loadRewards("/test/the-rewarder/dvt-distribution.json");
+        bytes32[] memory wethLeaves = _loadRewards("/test/the-rewarder/weth-distribution.json");
+
+        dvtRoot = merkle.getRoot(dvtLeaves);
+        wethRoot = merkle.getRoot(wethLeaves);
+
+        IERC20[] memory tokensToClaim = new IERC20[](2);
+        tokensToClaim[0] = IERC20(address(dvt));
+        tokensToClaim[1] = IERC20(address(weth));
+
+        // Create Alice's claims
+        Claim[] memory claims = new Claim[](2);
+
+        claims[0] = Claim({
+            batchNumber: 0, // claim corresponds to first DVT batch
+            amount: playerAmountDVT,
+            tokenIndex: 0, // claim corresponds to first token in `tokensToClaim` array
+            proof: merkle.getProof(dvtLeaves, 2) // Alice's address is at index 2
+        });
+
+        // And then, the WETH claim
+        claims[1] = Claim({
+            batchNumber: 0, // claim corresponds to first WETH batch
+            amount: playerAmountETH,
+            tokenIndex: 1, // claim corresponds to second token in `tokensToClaim` array
+            proof: merkle.getProof(wethLeaves, 2) // Alice's address is at index 2
+        });
+
+        vm.startPrank(player);
+        distributor.claimRewards({inputClaims: claims, inputTokens: tokensToClaim});
+        vm.stopPrank();
+        console.log("player addr", player);
     }
 
     /**

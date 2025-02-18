@@ -5,12 +5,13 @@ pragma solidity =0.8.25;
 import {Test, console} from "forge-std/Test.sol";
 import {DamnValuableToken} from "../../src/DamnValuableToken.sol";
 import {TrusterLenderPool} from "../../src/truster/TrusterLenderPool.sol";
+import {AttackerThruster} from "../../src/truster/AttackerThruster.sol";
 
 contract TrusterChallenge is Test {
     address deployer = makeAddr("deployer");
     address player = makeAddr("player");
     address recovery = makeAddr("recovery");
-    
+
     uint256 constant TOKENS_IN_POOL = 1_000_000e18;
 
     DamnValuableToken public token;
@@ -51,7 +52,11 @@ contract TrusterChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_truster() public checkSolvedByPlayer {
-        
+        // To execute this attack within a single transaction, we need to create a specific contract that will call the flashLoan function and exploit the target.functionCall(data); line.
+        // We pass the token contract address as the target and the data to call the approve function on the token contract as the data.
+        // This will allow us to approve the attacker contract to spend the pool's tokens. After gaining approval, we then use transferFrom to transfer the pool's tokens to the recovery address.
+        AttackerThruster attackerContract = new AttackerThruster(address(token), address(pool));
+        attackerContract.exploit(recovery);
     }
 
     /**

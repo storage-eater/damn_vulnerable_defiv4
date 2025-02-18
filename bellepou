@@ -1,0 +1,38 @@
+        console.log("player", player);
+        deal(player, 10 ether);
+
+        // Forwarder
+        // string memory functionToCall = "withdraw(uint256 amount, address payable receiver)";
+        uint256 balanceOfPool = weth.balanceOf(address(receiver));
+        // bytes memory data = abi.encodeWithSignature(functionToCall, balanceOfPool, recovery);
+
+        string memory functionToCall = "deposit()";
+        bytes memory data = abi.encodeWithSignature(functionToCall);
+
+        BasicForwarder.Request memory request = BasicForwarder.Request({
+            from: player,
+            target: address(pool),
+            value: 1 ether,
+            gas: 3000000,
+            nonce: forwarder.nonces(player),
+            data: data,
+            deadline: block.timestamp + 60
+        });
+
+        // Signature for the Execute action
+
+        bytes32 messageHash =
+            keccak256(abi.encodePacked("\x19\x01", forwarder.domainSeparator(), forwarder.getDataHash(request)));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(playerPk, messageHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        // bool sucess = forwarder.execute{value: 1 ether}(request, signature);
+
+        // Multicall
+        bytes[] memory dataForMultiCall = new bytes[](1);
+        dataForMultiCall[0] = abi.encodeWithSignature("execute(Request calldata request, bytes calldata signature)", request, signature);
+
+        bytes[] memory results = pool.multicall(dataForMultiCall);
+
+        console.log("Balance of player in pool", pool.deposits(player));
+    }
